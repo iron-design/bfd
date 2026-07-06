@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(*.pem)",
+      "Read(*.key)",
+      "Read(*.cert)",
+      "Read(credentials.json)",
+      "Read(service-account*.json)",
+      "Bash(env)",
+      "Bash(printenv)",
+      "Bash(*SECRET*)",
+      "Bash(*PASSWORD*)",
+      "Bash(*TOKEN*)",
+      "Bash(*CREDENTIAL*)",
+      "Bash(rm -rf /*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}

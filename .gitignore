@@ -1,0 +1,46 @@
+# 의존성
+node_modules/
+.pnp
+.pnp.js
+
+# 환경 변수 (절대 커밋 금지!)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# 빌드 결과물
+.next/
+out/
+dist/
+build/
+
+# 인증 정보 (절대 커밋 금지!)
+*.pem
+*.key
+*.cert
+credentials.json
+service-account*.json
+
+# Vercel
+.vercel
+
+# Claude Code 개인 설정 (팀 공용 .claude/settings.json 은 올림)
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# 로그
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 에디터 / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
