@@ -1,7 +1,9 @@
-# 회복 중심 뽀모도로 PRD
+# Recovery Pomodoro — 회복형 집중 타이머 PRD
 
-> BF.D Vibe Coding Challenge — 4주차 프로젝트
+> **버전: v1.1** · BF.D Vibe Coding Challenge — 4주차 프로젝트
 > 작성자: 최현철 | 작성일: 2026-07-06
+>
+> *v1.1 변경: 제품명(Recovery Pomodoro) 반영, 도구 스택에서 v0/Lovable 제거(Cursor + Claude Code 기준으로 정정).*
 
 ---
 
@@ -11,7 +13,7 @@
 |------|------|
 | 주당 가용 시간 | 6시간 (총 ~24시간) |
 | AI/코딩 수준 | Lv.3 (자동화 워크플로우까지 가능) |
-| 도구 스택 | Claude Code + Cursor + v0/Lovable |
+| 도구 스택 | Cursor + Claude Code (Next.js · Supabase · Vercel) |
 
 ## 1. 문제 정의
 
