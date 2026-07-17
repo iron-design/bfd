@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recovery Pomodoro — 시안</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #1a2e28;
+      --bg-mid: #243d35;
+      --fog: rgba(196, 220, 208, 0.12);
+      --widget: #f3f7f4;
+      --widget-ink: #1c2b26;
+      --muted: #5a6f66;
+      --line: rgba(28, 43, 38, 0.1);
+      --focus: #c45c48;
+      --rest: #2f7a62;
+      --accent: #1f6b55;
+      --soft: #e4efe9;
+      --shadow: 0 24px 60px rgba(10, 22, 18, 0.45);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: "Outfit", sans-serif;
+      color: var(--widget-ink);
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 20%, rgba(90, 160, 130, 0.35), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 85% 75%, rgba(180, 120, 80, 0.18), transparent 50%),
+        linear-gradient(160deg, var(--bg-deep), var(--bg-mid) 55%, #1e3830);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 1px 1px, var(--fog) 1px, transparent 0);
+      background-size: 28px 28px;
+      pointer-events: none;
+      opacity: 0.55;
+    }
+
+    .stage-label {
+      position: fixed;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(230, 240, 235, 0.7);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      z-index: 1;
+    }
+
+    .widget {
+      position: relative;
+      width: min(320px, calc(100vw - 32px));
+      min-height: 280px;
+      background: var(--widget);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 22px 18px;
+      z-index: 2;
+      cursor: grab;
+      animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .widget:active { cursor: grabbing; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.55; transform: scale(0.85); }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .view { display: none; animation: fade-in 0.28s ease; }
+    .view.active { display: flex; flex-direction: column; gap: 14px; min-height: 240px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .brand strong {
+      font-family: "Fraunces", serif;
+      font-weight: 650;
+      color: var(--widget-ink);
+      font-size: 15px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--focus);
+      animation: pulse-dot 1.4s ease infinite;
+    }
+
+    .dot.rest { background: var(--rest); }
+
+    .timer {
+      font-family: "Fraunces", serif;
+      font-optical-sizing: auto;
+      font-size: 64px;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      text-align: center;
+      margin: 8px 0 4px;
+    }
+
+    .hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .durations {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .chip:hover { border-color: rgba(31, 107, 85, 0.35); color: var(--accent); }
+    .chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease, background 0.15s ease;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn.primary { background: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #185545; }
+    .btn.ghost {
+      background: var(--soft);
+      color: var(--widget-ink);
+    }
+    .btn.ghost:hover { background: #d5e5dc; }
+    .btn.danger {
+      flex: 0 0 auto;
+      width: 46px;
+      background: #f3e4e1;
+      color: var(--focus);
+    }
+    .btn.full { width: 100%; }
+    .btn.linkish {
+      background: transparent;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 6px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .summary {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+      letter-spacing: 0.01em;
+    }
+
+    .guide-card {
+      background: linear-gradient(180deg, #eaf4ef, #e1eee7);
+      border: 1px solid rgba(31, 107, 85, 0.12);
+      border-radius: 16px;
+      padding: 16px 14px;
+      text-align: center;
+    }
+
+    .guide-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .guide-emoji {
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .guide-text {
+      font-family: "Fraunces", serif;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: var(--widget-ink);
+    }
+
+    .short-guide {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--rest);
+    }
+
+    .checkin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .checkin-btn {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .checkin-btn:hover {
+      border-color: rgba(31, 107, 85, 0.35);
+      background: var(--soft);
+    }
+
+    .feedback-emoji {
+      font-size: 36px;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .feedback-title {
+      font-family: "Fraunces", serif;
+      font-size: 22px;
+      font-weight: 650;
+      text-align: center;
+      line-height: 1.25;
+    }
+
+    .feedback-body {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 0 4px;
+    }
+
+    .title-lg {
+      font-family: "Fraunces", serif;
+      font-size: 24px;
+      font-weight: 650;
+      text-align: center;
+      line-height: 1.25;
+      margin-top: 8px;
+    }
+
+    .confirm-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .confirm-stack .btn.primary {
+      line-height: 1.25;
+      padding: 12px 14px;
+    }
+
+    .confirm-stack .btn.primary small {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <p class="stage-label">1주차 HTML 시안 · 브라우저 전용 (새로고침 시 초기화)</p>
+
+  <div class="widget" id="widget">
+    <!-- 1. 대기 -->
+    <section class="view active" id="view-idle" data-view="idle">
+      <div class="brand"><span>🍅</span><strong>Recovery Pomo</strong></div>
+      <div class="timer" id="idle-time">0:05</div>
+      <p class="hint">테스트용 집중 시간</p>
+      <div class="durations" role="group" aria-label="집중 시간 선택">
+        <button class="chip active" data-sec="5" type="button">5초</button>
+        <button class="chip" data-sec="10" type="button">10초</button>
+        <button class="chip" data-sec="25" type="button">25초</button>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btn-start" type="button">▶ 시작하기</button>
+      </div>
+      <p class="summary" id="today-summary"></p>
+    </section>
+
+    <!-- 2. 집중 중 -->
+    <section class="view" id="view-focus" data-view="focus">
+      <div class="status-row"><span class="dot"></span> 집중 중</div>
+      <div class="timer" id="focus-time">0:05</div>
+      <p class="hint">끝날 때까지 한 가지에만 머물러 보세요</p>
+      <div class="actions">
+        <button class="btn ghost" id="btn-pause" type="button">⏸ 일시정지</button>
+        <button class="btn danger" id="btn-abort" type="button" title="포기">✕</button>
+      </div>
+    </section>
+
+    <!-- 3. 쉬는 안내 -->
+    <section class="view" id="view-guide" data-view="guide">
+      <div class="status-row"><span class="dot rest"></span> 쉬는 시간</div>
+      <div class="guide-card">
+        <div class="guide-label">💡 이번 쉬는 안내</div>
+        <div class="guide-emoji" id="guide-emoji">👁</div>
+        <p class="guide-text" id="guide-text">눈을 감고 20초, 또는 6미터 이상 먼 곳을 바라보세요</p>
+      </div>
+      <button class="btn linkish" id="btn-other-guide" type="button">다른 안내 보기</button>
+      <div class="confirm-stack">
+        <button class="btn primary" id="btn-confirm-guide" type="button">
+          확인했어요
+          <small>쉬는 시간 시작할 준비 됐어요</small>
+        </button>
+      </div>
+    </section>
+
+    <!-- 4. 휴식 중 -->
+    <section class="view" id="view-break" data-view="break">
+      <div class="status-row"><span class="dot rest"></span> 휴식 중</div>
+      <p class="short-guide" id="break-guide">👁 먼 곳 바라보기</p>
+      <div class="timer" id="break-time">0:05</div>
+      <p class="hint">안내대로 천천히 쉬어보세요</p>
+      <div class="actions">
+        <button class="btn ghost" id="btn-skip-break" type="button">건너뛰기</button>
+      </div>
+    </section>
+
+    <!-- 5. 체크인 -->
+    <section class="view" id="view-checkin" data-view="checkin">
+      <p class="title-lg">지금 회복됐나요?</p>
+      <div class="checkin-list">
+        <button class="checkin-btn" data-check="good" type="button">😌 충분히 쉬었어요</button>
+        <button class="checkin-btn" data-check="meh" type="button">😐 애매해요</button>
+        <button class="checkin-btn" data-check="bad" type="button">😵 못 쉬었어요</button>
+      </div>
+    </section>
+
+    <!-- 6. 피드백 -->
+    <section class="view" id="view-feedback" data-view="feedback">
+      <div class="feedback-emoji" id="feedback-emoji">😌</div>
+      <p class="feedback-title" id="feedback-title">충분히 쉬었군요.</p>
+      <p class="feedback-body" id="feedback-body">좋아요. 그 상태로 다음 블록 들어가세요.</p>
+      <div class="actions" style="margin-top:auto">
+        <button class="btn primary" id="btn-next" type="button">다음 집중 시작 →</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const GUIDES = [
+      {
+        emoji: "👁",
+        text: "눈을 감고 20초, 또는 6미터 이상 먼 곳을 바라보세요",
+        short: "👁 먼 곳 바라보기",
+      },
+      {
+        emoji: "🧘",
+        text: "아무것도 하지 말고 멍하니 있어보세요. 폰 없이.",
+        short: "🧘 멍하니 있기",
+      },
+      {
+        emoji: "🤸",
+        text: "천천히 목을 좌우로 기울이고, 어깨를 크게 돌려보세요",
+        short: "🤸 목·어깨 풀기",
+      },
+      {
+        emoji: "🖐",
+        text: "손목을 천천히 돌리고, 손가락을 쭉 펴보세요",
+        short: "🖐 손목 풀기",
+      },
+      {
+        emoji: "🌬",
+        text: "4초 들이쉬고, 4초 참고, 4초 내쉬세요 (박스 호흡)",
+        short: "🌬 박스 호흡",
+      },
+      {
+        emoji: "🚶",
+        text: "자리에서 일어나 물 한 잔 마시고 오세요",
+        short: "🚶 물 한 잔 마시기",
+      },
+    ];
+
+    const FEEDBACK = {
+      good: {
+        emoji: "😌",
+        title: "충분히 쉬었군요.",
+        body: "좋아요. 그 상태로 다음 블록 들어가세요.",
+      },
+      meh: {
+        emoji: "😐",
+        title: "애매했군요.",
+        body: "애매한 휴식은 반쪽짜리예요. 다음엔 폰을 멀리 해보세요.",
+      },
+      bad: {
+        emoji: "😵",
+        title: "못 쉬었군요.",
+        body: "방금 그건 회복이 아니었어요. 다음 휴식엔 다르게 해볼까요?",
+      },
+    };
+
+    const BREAK_SECONDS = 5; // 시안용 짧은 휴식
+
+    const state = {
+      view: "idle",
+      focusSeconds: 5,
+      remaining: 5,
+      paused: false,
+      timerId: null,
+      guideIndex: 0,
+      lastGuideIndex: -1,
+      stats: { cycles: 0, good: 0, meh: 0, bad: 0 },
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => [...document.querySelectorAll(sel)];
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    function showView(name) {
+      state.view = name;
+      $$(".view").forEach((el) => el.classList.toggle("active", el.dataset.view === name));
+    }
+
+    function notify(title, body) {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((p) => {
+          if (p === "granted") new Notification(title, { body });
+        });
+      }
+    }
+
+    function clearTimer() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function tick(onDone) {
+      clearTimer();
+      state.timerId = setInterval(() => {
+        if (state.paused) return;
+        state.remaining -= 1;
+        renderTimers();
+        if (state.remaining <= 0) {
+          clearTimer();
+          onDone();
+        }
+      }, 1000);
+    }
+
+    function renderTimers() {
+      $("#idle-time").textContent = formatTime(state.focusSeconds);
+      $("#focus-time").textContent = formatTime(Math.max(0, state.remaining));
+      $("#break-time").textContent = formatTime(Math.max(0, state.remaining));
+    }
+
+    function renderSummary() {
+      const { cycles, good, meh, bad } = state.stats;
+      if (cycles === 0 && good + meh + bad === 0) {
+        $("#today-summary").textContent = "";
+        return;
+      }
+      const parts = [`🍅×${cycles}`];
+      if (good) parts.push(`😌×${good}`);
+      if (meh) parts.push(`😐×${meh}`);
+      if (bad) parts.push(`😵×${bad}`);
+      $("#today-summary").textContent = `오늘: ${parts.join("  ")}`;
+    }
+
+    function pickRandomGuide() {
+      if (GUIDES.length === 1) {
+        state.guideIndex = 0;
+        return;
+      }
+      let next;
+      do {
+        next = Math.floor(Math.random() * GUIDES.length);
+      } while (next === state.lastGuideIndex);
+      state.guideIndex = next;
+    }
+
+    function nextOtherGuide() {
+      state.guideIndex = (state.guideIndex + 1) % GUIDES.length;
+      renderGuide();
+    }
+
+    function renderGuide() {
+      const g = GUIDES[state.guideIndex];
+      $("#guide-emoji").textContent = g.emoji;
+      $("#guide-text").textContent = g.text;
+      $("#break-guide").textContent = g.short;
+    }
+
+    function startFocus() {
+      state.remaining = state.focusSeconds;
+      state.paused = false;
+      $("#btn-pause").textContent = "⏸ 일시정지";
+      renderTimers();
+      showView("focus");
+      tick(onFocusDone);
+    }
+
+    function onFocusDone() {
+      notify("집중 끝", "쉬는 안내를 확인해 주세요.");
+      pickRandomGuide();
+      state.lastGuideIndex = state.guideIndex;
+      renderGuide();
+      showView("guide");
+      // 자동으로 휴식 시작하지 않음 — 확인 버튼 필요
+    }
+
+    function startBreak() {
+      state.remaining = BREAK_SECONDS;
+      state.paused = false;
+      renderTimers();
+      showView("break");
+      tick(onBreakDone);
+    }
+
+    function onBreakDone() {
+      notify("휴식 끝", "지금 회복됐나요?");
+      showView("checkin");
+    }
+
+    function chooseCheckin(key) {
+      state.stats.cycles += 1;
+      state.stats[key] += 1;
+      const fb = FEEDBACK[key];
+      $("#feedback-emoji").textContent = fb.emoji;
+      $("#feedback-title").textContent = fb.title;
+      $("#feedback-body").textContent = fb.body;
+      showView("feedback");
+    }
+
+    function backToIdle() {
+      clearTimer();
+      state.paused = false;
+      renderTimers();
+      renderSummary();
+      showView("idle");
+    }
+
+    // Events
+    $$(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        $$(".chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        state.focusSeconds = Number(chip.dataset.sec);
+        renderTimers();
+      });
+    });
+
+    $("#btn-start").addEventListener("click", () => {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      startFocus();
+    });
+
+    $("#btn-pause").addEventListener("click", () => {
+      state.paused = !state.paused;
+      $("#btn-pause").textContent = state.paused ? "▶ 계속" : "⏸ 일시정지";
+    });
+
+    $("#btn-abort").addEventListener("click", () => {
+      clearTimer();
+      backToIdle();
+    });
+
+    $("#btn-other-guide").addEventListener("click", nextOtherGuide);
+
+    $("#btn-confirm-guide").addEventListener("click", () => {
+      state.lastGuideIndex = state.guideIndex;
+      startBreak();
+    });
+
+    $("#btn-skip-break").addEventListener("click", () => {
+      clearTimer();
+      onBreakDone();
+    });
+
+    $$(".checkin-btn").forEach((btn) => {
+      btn.addEventListener("click", () => chooseCheckin(btn.dataset.check));
+    });
+
+    $("#btn-next").addEventListener("click", backToIdle);
+
+    // Drag widget
+    (() => {
+      const el = $("#widget");
+      let dragging = false;
+      let ox = 0;
+      let oy = 0;
+      let startX = 0;
+      let startY = 0;
+
+      el.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button")) return;
+        dragging = true;
+        el.setPointerCapture(e.pointerId);
+        const rect = el.getBoundingClientRect();
+        ox = e.clientX - rect.left;
+        oy = e.clientY - rect.top;
+        startX = rect.left;
+        startY = rect.top;
+        el.style.position = "fixed";
+        el.style.left = `${startX}px`;
+        el.style.top = `${startY}px`;
+        el.style.margin = "0";
+        el.style.zIndex = "10";
+      });
+
+      el.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        el.style.left = `${e.clientX - ox}px`;
+        el.style.top = `${e.clientY - oy}px`;
+      });
+
+      el.addEventListener("pointerup", () => {
+        dragging = false;
+      });
+    })();
+
+    renderTimers();
+    renderSummary();
+  </script>
+</body>
+</html>

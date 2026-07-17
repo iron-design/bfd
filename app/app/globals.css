@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --bg-deep: #1a2e28;
+  --bg-mid: #243d35;
+  --fog: rgba(196, 220, 208, 0.12);
+  --widget: #f3f7f4;
+  --widget-ink: #1c2b26;
+  --muted: #5a6f66;
+  --line: rgba(28, 43, 38, 0.1);
+  --focus-color: #c45c48;
+  --rest: #2f7a62;
+  --accent: #1f6b55;
+  --soft: #e4efe9;
+  --shadow: 0 8px 24px rgba(10, 22, 18, 0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: transparent; }
+
+body {
+  min-height: 100vh;
+  font-family: "Outfit", "Helvetica Neue", sans-serif;
+  color: var(--widget-ink);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Electron 드래그 영역 */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
