@@ -107,7 +107,7 @@ export default function Home() {
     if (typeof window === "undefined" || !(window as any).electron?.updateTray) return;
     const el = (window as any).electron;
     if (view === "focus" || view === "break") el.updateTray(formatTime(remaining));
-    else el.updateTray("🍅");
+    else el.updateTray("●");
   }, [view, remaining]);
 
   const clearTimer = useCallback(() => {
@@ -205,23 +205,16 @@ export default function Home() {
   const guide = GUIDES[guideIndex];
   const fb = FEEDBACK[checkinKey];
 
-  const summaryParts: string[] = [];
-  if (stats.cycles > 0 || stats.good + stats.meh + stats.bad > 0) {
-    summaryParts.push(`🍅×${stats.cycles}`);
-    if (stats.good) summaryParts.push(`😌×${stats.good}`);
-    if (stats.meh) summaryParts.push(`😐×${stats.meh}`);
-    if (stats.bad) summaryParts.push(`😵×${stats.bad}`);
-  }
+  const hasSummary = stats.cycles > 0 || stats.good + stats.meh + stats.bad > 0;
 
   const widget: React.CSSProperties = isCompact ? {
     width: 80, height: 80,
-    background: "var(--widget)",
+    background: "#000",
     borderRadius: "50%",
-    boxShadow: "var(--shadow)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   } : {
     width: "min(320px, calc(100vw - 32px))",
     minHeight: 280,
@@ -236,7 +229,7 @@ export default function Home() {
   };
 
   const timerStyle: React.CSSProperties = {
-    fontFamily: "Fraunces, serif",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
     fontSize: 64,
     fontWeight: 500,
     letterSpacing: "-0.03em",
@@ -272,10 +265,7 @@ export default function Home() {
 
         {/* 1. 대기 */}
         {view === "idle" && !showPicker && (<>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500, color: "var(--muted)" }}>
-            <span>🍅</span>
-            <strong style={{ fontFamily: "Fraunces, serif", fontWeight: 650, color: "var(--widget-ink)", fontSize: 15 }}>Recovery Pomo</strong>
-          </div>
+          <div style={{ height: 12 }} />
           <div style={timerStyle}>{formatTime(focusSec)}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <p style={{ ...hintStyle, fontSize: 11, marginBottom: 2 }}>집중</p>
@@ -309,8 +299,25 @@ export default function Home() {
           <div style={{ marginTop: "auto" }}>
             <button onClick={startFocus} style={btnPrimary}>▶ 시작하기</button>
           </div>
-          {summaryParts.length > 0 && (
-            <p style={{ textAlign: "center", fontSize: 13, color: "var(--muted)" }}>오늘: {summaryParts.join("  ")}</p>
+          {hasSummary && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 13 }}>
+              {/* 초록 구체 × 사이클 수 */}
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{
+                  display: "inline-block", width: 10, height: 10, borderRadius: "50%",
+                  background: "#30d158", boxShadow: "0 0 6px rgba(48,209,88,0.7)",
+                }} />
+                <span style={{ color: "var(--widget-ink)", fontWeight: 500 }}>×{stats.cycles}</span>
+              </span>
+              {/* 구분선 */}
+              <span style={{ color: "var(--line)", fontSize: 16 }}>|</span>
+              {/* 휴식 결과 이모지 3종 */}
+              <span style={{ display: "flex", gap: 6, color: "var(--muted)" }}>
+                <span>😌<span style={{ fontSize: 11, marginLeft: 1 }}>{stats.good}</span></span>
+                <span>😐<span style={{ fontSize: 11, marginLeft: 1 }}>{stats.meh}</span></span>
+                <span>😵<span style={{ fontSize: 11, marginLeft: 1 }}>{stats.bad}</span></span>
+              </span>
+            </div>
           )}
         </>)}
 
@@ -319,7 +326,7 @@ export default function Home() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
             <button onClick={() => setShowPicker(false)}
               style={{ background: "var(--soft)", border: "none", borderRadius: 999, width: 32, height: 32, fontSize: 16, cursor: "pointer", WebkitAppRegion: "no-drag" as never }}>‹</button>
-            <span style={{ fontFamily: "Fraunces, serif", fontWeight: 650, fontSize: 15 }}>시간 설정</span>
+            <span style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontWeight: 650, fontSize: 15 }}>시간 설정</span>
             <div style={{ width: 32 }} />
           </div>
 
@@ -332,7 +339,7 @@ export default function Home() {
                 type="number" min={0} max={5} value={pickerH}
                 onChange={(e) => setPickerH(Math.min(5, Math.max(0, parseInt(e.target.value) || 0)))}
                 style={{ width: 72, height: 72, background: "var(--soft)", border: "2px solid transparent", borderRadius: 16,
-                  fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 600, textAlign: "center",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 34, fontWeight: 600, textAlign: "center",
                   color: "var(--widget-ink)", outline: "none", cursor: "text",
                   WebkitAppRegion: "no-drag" as never }}
               />
@@ -341,7 +348,7 @@ export default function Home() {
               <span style={{ fontSize: 11, color: "var(--muted)" }}>시</span>
             </div>
 
-            <span style={{ fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 600, marginBottom: 28 }}>:</span>
+            <span style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 34, fontWeight: 600, marginBottom: 28 }}>:</span>
 
             {/* 분 */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
@@ -351,7 +358,7 @@ export default function Home() {
                 type="number" min={0} max={59} value={pickerM}
                 onChange={(e) => setPickerM(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
                 style={{ width: 72, height: 72, background: "var(--soft)", border: "2px solid transparent", borderRadius: 16,
-                  fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 600, textAlign: "center",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 34, fontWeight: 600, textAlign: "center",
                   color: "var(--widget-ink)", outline: "none", cursor: "text",
                   WebkitAppRegion: "no-drag" as never }}
               />
@@ -370,12 +377,13 @@ export default function Home() {
             style={{ ...btnPrimary }}>적용</button>
         </>)}
 
-        {/* 2-A. 집중 중 — 미니 원형 다이얼 */}
+        {/* 2-A. 집중 중 — 마리모 구체 */}
         {view === "focus" && isCompact && (() => {
           const total = focusSec;
           const elapsed = total - Math.max(0, remaining);
           const progress = total > 0 ? elapsed / total : 0;
-          const R = 34; const C = 2 * Math.PI * R;
+          // 프로그레스 링: r=37, 바깥쪽에 붙게
+          const R = 37; const C = 2 * Math.PI * R;
           return (
             <div
               style={{ width: 80, height: 80, position: "relative", cursor: "grab" }}
@@ -398,20 +406,71 @@ export default function Home() {
                 document.addEventListener("mouseup", onUp);
               }}
             >
-              <svg width="80" height="80" style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
-                <circle cx="40" cy="40" r={R} fill="none" stroke="rgba(31,107,85,0.15)" strokeWidth="5" />
-                <circle cx="40" cy="40" r={R} fill="none" stroke="var(--accent)" strokeWidth="5"
+              {/* 프로그레스 링 */}
+              <svg width="80" height="80" style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)", zIndex: 2, pointerEvents: "none" }}>
+                {/* 트랙 */}
+                <circle cx="40" cy="40" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+                {/* 진행 */}
+                <circle cx="40" cy="40" r={R} fill="none"
+                  stroke="#30d158" strokeWidth="3"
                   strokeDasharray={C} strokeDashoffset={C * (1 - progress)}
-                  strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s linear" }} />
+                  strokeLinecap="round"
+                  style={{
+                    transition: "stroke-dashoffset 1s linear",
+                    filter: "drop-shadow(0 0 4px rgba(48,209,88,0.9))",
+                  }} />
               </svg>
+
+              {/* 마리모 — fluid blob */}
+              <div style={{
+                position: "absolute",
+                inset: 16,
+                overflow: "hidden",
+                background: "#000",
+                animation: "fluid-morph 9s ease-in-out infinite",
+                zIndex: 1,
+              }}>
+                {/* blob 1 — 형광 그린 메인 */}
+                <div style={{
+                  position: "absolute", width: "90%", height: "90%",
+                  top: "15%", left: "-5%",
+                  borderRadius: "50%",
+                  background: "#30d158",
+                  filter: "blur(10px)",
+                  opacity: 0.9,
+                  animation: "blob-drift1 11s ease-in-out infinite",
+                }} />
+                {/* blob 2 — 밝은 형광 */}
+                <div style={{
+                  position: "absolute", width: "65%", height: "65%",
+                  top: "-10%", left: "30%",
+                  borderRadius: "50%",
+                  background: "#4fffaa",
+                  filter: "blur(8px)",
+                  opacity: 0.6,
+                  animation: "blob-drift2 13s ease-in-out infinite",
+                }} />
+                {/* blob 3 — 딥 그린 포인트 */}
+                <div style={{
+                  position: "absolute", width: "50%", height: "50%",
+                  top: "55%", left: "35%",
+                  borderRadius: "50%",
+                  background: "#00e04a",
+                  filter: "blur(7px)",
+                  opacity: 0.7,
+                  animation: "blob-drift3 8s ease-in-out infinite",
+                }} />
+              </div>
+
+              {/* hover 시 확장 아이콘 */}
               {isHovered && (
-                <div style={{ position: "absolute", inset: 0, borderRadius: "50%",
-                  background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{
+                  position: "absolute", inset: 0, borderRadius: "50%",
+                  background: "rgba(0,0,0,0.42)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3,
+                }}>
                   <button
                     onClick={() => setIsCompact(false)}
-                    style={{ background: "transparent", border: "none", color: "#fff",
-                      fontSize: 22, cursor: "pointer", lineHeight: 1,
-                      WebkitAppRegion: "no-drag" as never }}>
+                    style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", lineHeight: 1, WebkitAppRegion: "no-drag" as never }}>
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
                       <line x1="3" y1="15" x2="15" y2="3"/>
                       <polyline points="3,8 3,15 10,15"/>
@@ -454,10 +513,10 @@ export default function Home() {
         {/* 3. 쉬는 안내 */}
         {view === "guide" && (<>
           <div style={statusRow}><span style={{ ...dot("var(--rest)"), animation: "none" }} /> 쉬는 시간</div>
-          <div style={{ background: "linear-gradient(180deg,#eaf4ef,#e1eee7)", border: "1px solid rgba(31,107,85,0.12)", borderRadius: 16, padding: "16px 14px", textAlign: "center" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", marginBottom: 10, letterSpacing: "0.02em" }}>💡 이번 쉬는 안내</div>
+          <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 14px", textAlign: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", marginBottom: 10, letterSpacing: "0.02em" }}>이번 쉬는 안내</div>
             <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 8 }}>{guide.emoji}</div>
-            <p style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 500, lineHeight: 1.35 }}>{guide.text}</p>
+            <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 17, fontWeight: 500, lineHeight: 1.35, color: "var(--widget-ink)" }}>{guide.text}</p>
           </div>
           <button onClick={() => setGuideIndex((i) => (i + 1) % GUIDES.length)}
             style={{ background: "transparent", border: "none", color: "var(--muted)", fontSize: 14, fontWeight: 500, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, padding: 6, WebkitAppRegion: "no-drag" as never }}>
@@ -477,7 +536,7 @@ export default function Home() {
           <div style={statusRow}><span style={dot("var(--rest)")} /> 휴식 중</div>
           <div style={{ textAlign: "center", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
             <div style={{ fontSize: 48, animation: "breathe 4s ease-in-out infinite" }}>{guide.emoji}</div>
-            <p style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, color: "var(--rest)", lineHeight: 1.35, animation: "breathe 4s ease-in-out infinite" }}>{guide.text}</p>
+            <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 20, fontWeight: 600, color: "var(--rest)", lineHeight: 1.35, animation: "breathe 4s ease-in-out infinite" }}>{guide.text}</p>
             <p style={{ fontSize: 13, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{formatTime(Math.max(0, remaining))}</p>
           </div>
           <div style={{ marginTop: "auto" }}>
@@ -487,11 +546,11 @@ export default function Home() {
 
         {/* 5. 체크인 */}
         {view === "checkin" && (<>
-          <p style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 650, textAlign: "center", lineHeight: 1.25, marginTop: 8 }}>지금 회복됐나요?</p>
+          <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 24, fontWeight: 650, textAlign: "center", lineHeight: 1.25, marginTop: 8 }}>지금 회복됐나요?</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
             {(["good", "meh", "bad"] as CheckinKey[]).map((key) => (
               <button key={key} onClick={() => doCheckin(key)}
-                style={{ width: "100%", textAlign: "left", border: "1px solid var(--line)", background: "#fff", borderRadius: 14, padding: "13px 14px", fontSize: 14, fontWeight: 500, cursor: "pointer", WebkitAppRegion: "no-drag" as never }}>
+                style={{ width: "100%", textAlign: "left", border: "1px solid var(--line)", background: "var(--soft)", borderRadius: 14, padding: "13px 14px", fontSize: 14, fontWeight: 500, cursor: "pointer", color: "var(--widget-ink)", WebkitAppRegion: "no-drag" as never }}>
                 {FEEDBACK[key].emoji} {key === "good" ? "충분히 쉬었어요" : key === "meh" ? "애매해요" : "못 쉬었어요"}
               </button>
             ))}
@@ -501,7 +560,7 @@ export default function Home() {
         {/* 6. 피드백 */}
         {view === "feedback" && (<>
           <div style={{ fontSize: 36, textAlign: "center", marginTop: 8 }}>{fb.emoji}</div>
-          <p style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 650, textAlign: "center", lineHeight: 1.25 }}>{fb.title}</p>
+          <p style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif", fontSize: 22, fontWeight: 650, textAlign: "center", lineHeight: 1.25 }}>{fb.title}</p>
           <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 14, lineHeight: 1.5, padding: "0 4px" }}>{fb.body}</p>
           <div style={{ marginTop: "auto" }}>
             <button onClick={backToIdle} style={btnPrimary}>다음 집중 시작 →</button>
