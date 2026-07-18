@@ -32,6 +32,9 @@ service-account*.json
 # macOS
 .DS_Store
 
+# 기획 내부 문서 (PRD, 화면 명세서)
+prds/
+
 # 로그
 *.log
 npm-debug.log*
