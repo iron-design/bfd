@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --bg-deep: #0a0a0a;
+  --bg-mid: #141414;
+  --fog: rgba(48, 209, 88, 0.08);
+  --widget: #1c1c1e;
+  --widget-ink: #f2f2f7;
+  --muted: #8e8e93;
+  --line: rgba(255, 255, 255, 0.08);
+  --focus-color: #ff6b6b;
+  --rest: #30d158;
+  --accent: #30d158;
+  --soft: #2c2c2e;
+  --shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: transparent; }
+
+body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  color: var(--widget-ink);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Electron 드래그 영역 */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.04); }
+}
+
+/* Fluid blob — 찰랑거리는 젤리 (border-radius 미세 변형) */
+@keyframes fluid-morph {
+  0%   { border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%; transform: translate(0px, 0px); }
+  20%  { border-radius: 52% 48% 51% 49% / 49% 52% 48% 51%; transform: translate(2px, -3px); }
+  40%  { border-radius: 48% 52% 50% 50% / 52% 48% 51% 49%; transform: translate(-2px, 2px); }
+  60%  { border-radius: 51% 49% 52% 48% / 48% 51% 50% 52%; transform: translate(3px, 2px); }
+  80%  { border-radius: 49% 51% 48% 52% / 51% 49% 52% 48%; transform: translate(-2px, -2px); }
+  100% { border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%; transform: translate(0px, 0px); }
+}
+
+/* 내부 오로라 블럽들 — 느리고 부드럽게 */
+@keyframes blob-drift1 {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  40%  { transform: translate(16%, -12%) scale(1.1); }
+  75%  { transform: translate(-8%, 14%) scale(0.92); }
+  100% { transform: translate(0%, 0%) scale(1); }
+}
+
+@keyframes blob-drift2 {
+  0%   { transform: translate(0%, 0%) scale(1.05); }
+  45%  { transform: translate(-14%, 10%) scale(0.9); }
+  80%  { transform: translate(10%, -15%) scale(1.12); }
+  100% { transform: translate(0%, 0%) scale(1.05); }
+}
+
+@keyframes blob-drift3 {
+  0%   { transform: translate(0%, 0%) scale(0.95); }
+  50%  { transform: translate(8%, 12%) scale(1.08); }
+  100% { transform: translate(0%, 0%) scale(0.95); }
+}

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "recovery-pomodoro",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "/Users/tori/Desktop/Claude_coding/BF.D/3rd-choi-hyuncheol/app"
+    }
+  ]
+}

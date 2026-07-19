@@ -44,3 +44,6 @@ pnpm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# 기획 내부 문서 (PRD, 화면 명세서)
+prds/
