@@ -1,11 +1,11 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
 
 let tray = null
 
-const NOTCH_W = 680         // 패널 전체 너비
+const NOTCH_W = 580         // 패널 전체 너비
 const NOTCH_TRIGGER_W = 200 // 호버 감지 트리거 너비 (노치 하드웨어 영역)
 const COLLAPSED_H = 38      // 축소 상태 높이
 const EXPANDED_H = 200      // 펼침 상태 높이
@@ -14,6 +14,48 @@ const EXPANDED_H = 200      // 펼침 상태 높이
 let notchExpanded = false
 let collapseTimer = null
 let panelLocked = false   // guide/checkin/feedback 중엔 자동 닫힘 방지
+let soundEnabled = true
+
+function buildTodaySummary() {
+  const filePath = getSessionsPath()
+  if (!fs.existsSync(filePath)) return [{ label: '오늘 기록 없음', enabled: false }]
+  const sessions = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+  const today = sessions.filter(s => s.timestamp?.startsWith(todayStr))
+  if (!today.length) return [{ label: '오늘 기록 없음', enabled: false }]
+  const good = today.filter(s => s.checkin === 'good').length
+  const bad  = today.filter(s => s.checkin === 'bad').length
+  return [
+    { label: `오늘 ${today.length}사이클 완료`, enabled: false },
+    { label: `잘 쉼 ${good}회  ·  부족 ${bad}회`, enabled: false },
+  ]
+}
+
+function buildContextMenu() {
+  return Menu.buildFromTemplate([
+    ...buildTodaySummary(),
+    { type: 'separator' },
+    {
+      label: '소리',
+      type: 'checkbox',
+      checked: soundEnabled,
+      click: () => {
+        soundEnabled = !soundEnabled
+        const wins = BrowserWindow.getAllWindows()
+        if (wins.length) wins[0].webContents.send('sound-toggle', soundEnabled)
+      },
+    },
+    {
+      label: '데이터 파일 열기',
+      click: () => {
+        const p = getSessionsPath()
+        fs.existsSync(p) ? shell.showItemInFolder(p) : shell.openPath(path.dirname(p))
+      },
+    },
+    { type: 'separator' },
+    { label: '종료', click: () => app.quit() },
+  ])
+}
 
 function getNotchPos() {
   const { bounds } = screen.getPrimaryDisplay()
@@ -213,10 +255,11 @@ ipcMain.handle('lock-panel', (_event, locked) => {
 })
 
 app.whenReady().then(() => {
+  app.dock.hide()
+
   try {
     const pulseFrames = makePulseFrames()
     tray = new Tray(pulseFrames[0])
-    tray.setTitle('')
 
     // 부드러운 사인 파형 펄스 (60프레임 / 1200ms = 50ms 간격)
     let pulseIdx = 0
@@ -226,13 +269,9 @@ app.whenReady().then(() => {
       pulseIdx++
     }, 20)
 
-    const contextMenu = Menu.buildFromTemplate([
-      { label: '설정', enabled: false },
-      { type: 'separator' },
-      { label: '종료', click: () => app.quit() },
-    ])
-    tray.setContextMenu(contextMenu)
-    tray.on('click', () => tray.popUpContextMenu())
+    const showMenu = () => tray.popUpContextMenu(buildContextMenu())
+    tray.on('click', showMenu)
+    tray.on('right-click', showMenu)
   } catch (e) {
     console.error('[tray] ERROR:', e)
   }

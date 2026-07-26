@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electron', {
   notchCollapse: () => ipcRenderer.invoke('notch-collapse'),
   lockPanel: (locked) => ipcRenderer.invoke('lock-panel', locked),
   onNotchState: (cb) => ipcRenderer.on('notch-state', (_e, expanded) => cb(expanded)),
+  onSoundToggle: (cb) => ipcRenderer.on('sound-toggle', (_e, enabled) => cb(enabled)),
 })

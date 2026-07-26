@@ -16,12 +16,16 @@
     "appId": "com.recovery-pomodoro.app",
     "productName": "Recovery Pomodoro",
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "identity": null
     },
     "files": [
       "out/**/*",
-      "electron/**/*"
-    ]
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "asar": true
   },
   "dependencies": {
     "@carbon/icons-react": "^11.84.0",

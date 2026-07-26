@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   View, TouchInteraction, Rotate, WindStream, Pause, Pedestrian,
   PlayFilled, CaretUp, CaretDown, ChevronLeft, StopFilled,
-  FaceSatisfiedFilled, FaceNeutralFilled, FaceDissatisfiedFilled,
+  CheckmarkFilled, FaceSatisfiedFilled, FaceDissatisfiedFilled,
 } from "@carbon/icons-react";
 
 const GUIDES = [
@@ -18,14 +18,12 @@ const GUIDES = [
 
 const TIER_BY_CHECKIN: Record<string, number[]> = {
   good: [1, 2],
-  meh:  [2, 3],
-  bad:  [3],
+  bad:  [2, 3],
 };
 
 const FEEDBACK = {
-  good: { Icon: FaceSatisfiedFilled,   iconColor: "#4ADE4A", title: "충분히 쉬었군요.",  body: "좋아요. 그 상태로 다음 블록 들어가세요." },
-  meh:  { Icon: FaceNeutralFilled,     iconColor: "#8E8E93", title: "애매했군요.",        body: "애매한 휴식은 반쪽짜리예요. 다음엔 폰을 멀리 해보세요." },
-  bad:  { Icon: FaceDissatisfiedFilled,iconColor: "#ff453a", title: "못 쉬었군요.",       body: "방금 그건 회복이 아니었어요. 다음 휴식엔 다르게 해볼까요?" },
+  good: { Icon: FaceSatisfiedFilled,    iconColor: "#4ADE4A", title: "잘 쉬었군요.",         body: "그 상태로 다음 블록 들어가세요." },
+  bad:  { Icon: FaceDissatisfiedFilled, iconColor: "#ff453a", title: "이번엔 조금 부족했어요.", body: "다음 휴식엔 폰을 멀리 해보세요." },
 };
 
 const FOCUS_OPTIONS = [
@@ -33,15 +31,21 @@ const FOCUS_OPTIONS = [
   { label: "25분", sec: 25 * 60 },
 ];
 
-function calcBreakSec(focusSec: number): number {
+function calcBreakSec(focusSec: number, tier = 2): number {
   if (focusSec <= 30) return 5;
-  if (focusSec < 45 * 60) return 5 * 60;
-  if (focusSec < 90 * 60) return 10 * 60;
-  return 20 * 60;
+  const table: Record<number, [number, number, number]> = {
+    1: [3 * 60,  5 * 60, 10 * 60],
+    2: [5 * 60, 10 * 60, 15 * 60],
+    3: [7 * 60, 15 * 60, 20 * 60],
+  };
+  const [a, b, c] = table[tier] ?? table[2];
+  if (focusSec < 45 * 60) return a;
+  if (focusSec < 90 * 60) return b;
+  return c;
 }
 
-type View = "idle" | "focus" | "guide" | "break" | "checkin" | "feedback";
-type CheckinKey = "good" | "meh" | "bad";
+type View = "idle" | "focus" | "complete" | "guide" | "break" | "checkin" | "feedback";
+type CheckinKey = "good" | "bad";
 
 function formatTime(sec: number) {
   if (sec >= 3600) {
@@ -111,10 +115,18 @@ export default function Home() {
   const [pickerM, setPickerM]         = useState(25);
   const [isExpanded, setIsExpanded]   = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
+  const [showExtend, setShowExtend]   = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundRef = useRef(true);
+  soundRef.current = soundEnabled;
 
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+
+  useEffect(() => {
+    el()?.onSoundToggle?.((enabled: boolean) => setSoundEnabled(enabled));
+  }, []);
 
   useEffect(() => {
     el()?.onNotchState((expanded: boolean) => {
@@ -129,10 +141,25 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    el()?.loadSessions?.().then((sessions: any[]) => {
+      if (!sessions?.length) return;
+      const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+      const today = sessions.filter((s) => s.timestamp?.startsWith(todayStr));
+      if (!today.length) return;
+      setStats({
+        cycles: today.length,
+        good:   today.filter((s) => s.checkin === "good").length,
+        meh:    today.filter((s) => s.checkin === "meh").length,
+        bad:    today.filter((s) => s.checkin === "bad").length,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
     const e = el();
     if (!e?.updateTray) return;
     if (view === "focus" || view === "break") e.updateTray(formatTime(remaining));
-    else e.updateTray("◉");
+    else e.updateTray("");
   }, [view, remaining]);
 
   const clearTimer = useCallback(() => {
@@ -166,31 +193,52 @@ export default function Home() {
     return next;
   }, []);
 
+  useEffect(() => {
+    if (view !== "complete") return;
+    const t = setTimeout(() => setView("guide"), 2000);
+    return () => clearTimeout(t);
+  }, [view]);
+
+  useEffect(() => {
+    if (view === "checkin") setShowExtend(false);
+  }, [view]);
+
   const startFocus = useCallback(() => {
     setPaused(false);
     setView("focus");
-    playSound("focus-start");
+    if (soundRef.current) playSound("focus-start");
     el()?.notchCollapse();
     startTick(focusSec, () => {
-      playSound("focus-end");
+      if (soundRef.current) playSound("focus-end");
       setGuideIndex((prev) => pickGuide(prev, lastCheckin, focusSec));
-      setView("guide");
+      setView("complete");
       el()?.lockPanel(true);
       el()?.notchExpand();
     });
   }, [focusSec, startTick, pickGuide, lastCheckin]);
 
-  const startBreak = useCallback(() => {
+  const extendBreak = useCallback((extraSec: number) => {
     setView("break");
     el()?.lockPanel(false);
     el()?.notchCollapse();
-    startTick(calcBreakSec(focusSec), () => {
-      playSound("checkin");
+    startTick(extraSec, () => {
+      if (soundRef.current) playSound("checkin");
       setView("checkin");
       el()?.lockPanel(true);
       el()?.notchExpand();
     });
-  }, [startTick, focusSec]);
+  }, [startTick]);
+
+  const startBreak = useCallback(() => {
+    setView("break");
+    el()?.lockPanel(true);
+    startTick(calcBreakSec(focusSec, GUIDES[guideIndex].tier), () => {
+      if (soundRef.current) playSound("checkin");
+      setView("checkin");
+      el()?.lockPanel(true);
+      el()?.notchExpand();
+    });
+  }, [startTick, focusSec, guideIndex]);
 
   const doCheckin = useCallback((key: CheckinKey) => {
     setCheckinKey(key);
@@ -397,26 +445,36 @@ export default function Home() {
           </div>
         </>)}
 
+        {/* ── 집중 완료 ── */}
+        {view === "complete" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <CheckmarkFilled size={36} style={{ color: C.accent }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, ...SF }}>집중 완료</div>
+            <div style={{ fontSize: 12, color: C.muted, ...SF }}>{formatTime(focusSec)}</div>
+          </div>
+        )}
+
         {/* ── 쉬는 안내 ── */}
         {view === "guide" && (<>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <guide.Icon size={13} style={{ color: C.title, flexShrink: 0 }} />
-              <span style={{ ...SF, fontSize: 12, fontWeight: 500, color: C.title }}>{guide.short}</span>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <guide.Icon size={40} style={{ color: C.accent, flexShrink: 0, animation: "breathe 3s ease-in-out infinite" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ ...SF, fontSize: 11, fontWeight: 500, color: C.title }}>{guide.short}</span>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.4, ...SF }}>
+                  {guide.text}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: C.subtext, ...SF }}>{formatTime(calcBreakSec(focusSec, guide.tier))} 휴식</span>
               <button onClick={() => setGuideIndex((i) => (i + 1) % GUIDES.length)}
                 style={{ ...SF, background: "none", border: "none", color: C.muted, fontSize: 11, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, WebkitAppRegion: "no-drag" as never, padding: 0 }}>
                 다른 안내
               </button>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: C.ink, lineHeight: 1.4, ...SF,
-              overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as never }}>
-              {guide.text}
-            </div>
-            <div style={{ fontSize: 11, color: C.subtext, ...SF }}>
-              {formatTime(calcBreakSec(focusSec))} 휴식
-            </div>
           </div>
-          <button onClick={startBreak} style={btnCTA}>확인했어요</button>
+          <button onClick={startBreak} style={btnCTA}>휴식 시작</button>
         </>)}
 
         {/* ── 휴식 중 ── */}
@@ -441,26 +499,31 @@ export default function Home() {
 
         {/* ── 체크인 ── */}
         {view === "checkin" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5, overflow: "hidden" }}>
-            <span style={{ ...SF, fontSize: 13, fontWeight: 600, color: C.ink }}>지금 회복됐나요?</span>
-            <div style={{ display: "flex", gap: 6 }}>
-              {(["good", "meh", "bad"] as CheckinKey[]).map((key) => {
-                const fb = FEEDBACK[key];
-                const FbIcon = fb.Icon;
-                return (
-                  <button key={key} onClick={() => doCheckin(key)}
-                    style={{ flex: 1, border: `1px solid ${C.line}`, background: C.soft, borderRadius: 10,
-                      padding: "8px 6px", fontSize: 12, fontWeight: 500, cursor: "pointer",
-                      color: C.ink, WebkitAppRegion: "no-drag" as never, ...SF,
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <FbIcon size={18} style={{ color: fb.iconColor }} />
-                    <span style={{ fontSize: 10, color: C.muted }}>
-                      {key === "good" ? "충분히" : key === "meh" ? "애매해요" : "못쉬었어요"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
+            {!showExtend ? (<>
+              <span style={{ ...SF, fontSize: 13, fontWeight: 600, color: C.ink }}>충분히 쉬었나요?</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => doCheckin("good")}
+                  style={{ ...btnCTA, flex: 1, background: C.accent }}>
+                  네, 준비됐어요
+                </button>
+                <button onClick={() => setShowExtend(true)}
+                  style={{ ...btnGray, flex: 1 }}>
+                  조금 더 쉴게요
+                </button>
+              </div>
+            </>) : (<>
+              <span style={{ ...SF, fontSize: 13, fontWeight: 600, color: C.ink }}>얼마나 더 쉬어요?</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => extendBreak(2 * 60)} style={{ ...btnGray, flex: 1 }}>+2분</button>
+                <button onClick={() => extendBreak(5 * 60)} style={{ ...btnGray, flex: 1 }}>+5분</button>
+                <button onClick={() => doCheckin("bad")}
+                  style={{ ...SF, border: "none", background: "none", color: C.muted, fontSize: 11,
+                    cursor: "pointer", WebkitAppRegion: "no-drag" as never, flexShrink: 0 }}>
+                  그냥 넘어갈게요
+                </button>
+              </div>
+            </>)}
           </div>
         )}
 
