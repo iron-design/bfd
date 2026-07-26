@@ -47,3 +47,9 @@ pnpm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Claude 스킬 (개인 작업 환경)
+.claude/skills/
+
+# 개인 문서
+Marimo_Brand_Concept_Book_v0.1.md
