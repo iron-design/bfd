@@ -219,8 +219,7 @@ export default function Home() {
 
   const extendBreak = useCallback((extraSec: number) => {
     setView("break");
-    el()?.lockPanel(false);
-    el()?.notchCollapse();
+    el()?.lockPanel(true);
     startTick(extraSec, () => {
       if (soundRef.current) playSound("checkin");
       setView("checkin");
