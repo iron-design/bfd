@@ -54,3 +54,6 @@ pnpm-debug.log*
 # 개인 문서
 Marimo_Brand_Concept_Book_v0.1.md
 app/electron/menubar.html
+
+# 기획 내부 문서 (PRD, 화면 명세서)
+prds/
