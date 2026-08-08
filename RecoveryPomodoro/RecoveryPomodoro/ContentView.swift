@@ -1,6 +1,24 @@
 import SwiftUI
 import ServiceManagement
 
+// MARK: - Custom Toggle Style
+struct AppToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+            Capsule()
+                .fill(configuration.isOn ? Color.accent : Color.white.opacity(0.22))
+                .frame(width: 36, height: 22)
+            Circle()
+                .fill(.white)
+                .frame(width: 18, height: 18)
+                .padding(2)
+                .shadow(color: .black.opacity(0.18), radius: 2, x: 0, y: 1)
+        }
+        .animation(.spring(response: 0.22, dampingFraction: 0.8), value: configuration.isOn)
+        .onTapGesture { configuration.isOn.toggle() }
+    }
+}
+
 // MARK: - Button Style (§1 Response + §4 Springs)
 // press: 즉각 수축 / release: 살짝 튀어오르는 spring
 struct ApplePressStyle: ButtonStyle {
@@ -758,13 +776,13 @@ struct SettingsView: View {
             // 소리
             settingRow(label: "소리") {
                 Toggle("", isOn: $model.soundEnabled)
-                    .toggleStyle(.switch).scaleEffect(0.75, anchor: .trailing).labelsHidden()
+                    .toggleStyle(AppToggleStyle()).labelsHidden()
             }
             rowDivider
             // 시작시 자동 실행
             settingRow(label: "시작시 자동 실행") {
                 Toggle("", isOn: $launchAtLogin)
-                    .toggleStyle(.switch).scaleEffect(0.75, anchor: .trailing).labelsHidden()
+                    .toggleStyle(AppToggleStyle()).labelsHidden()
                     .onChange(of: launchAtLogin) { newValue in
                         do {
                             if newValue { try SMAppService.mainApp.register() }
