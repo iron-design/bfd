@@ -79,6 +79,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let model = TimerModel()
     private var iconHostingView: NSHostingView<MenuBarIconLabel>?
     private var eventMonitor: Any?
+    private var notchMouseMonitor: Any?
     private var cancellables = Set<AnyCancellable>()
     private var animTimer: Timer?
 
@@ -87,6 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         setupPanel()
         observeModel()
+        setupNotchHover()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
@@ -102,6 +104,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.addSubview(hv)
             button.action = #selector(togglePanel)
             button.target = self
+        }
+    }
+
+    private func setupNotchHover() {
+        guard let screen = NSScreen.main, screen.safeAreaInsets.top > 0 else { return }
+        notchMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            guard self?.panel?.isVisible == false else { return }
+            let mouse = NSEvent.mouseLocation
+            let sf = screen.frame
+            let menuH = NSStatusBar.system.thickness
+            // 노치 실제 높이 = safeAreaInsets.top, 히트 영역은 메뉴바 전체 높이로
+            let hitW: CGFloat = 230
+            let notchRect = NSRect(
+                x: (sf.width - hitW) / 2,
+                y: sf.maxY - menuH,
+                width: hitW,
+                height: menuH
+            )
+            if notchRect.contains(mouse) {
+                self?.showPanel(overrideCenterX: sf.midX)
+            }
         }
     }
 
@@ -139,10 +162,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .sink { [weak self] view in
-                guard view == .complete else { return }
-                self?.sendFocusCompleteNotification()
-                if self?.panel?.isVisible == false {
-                    self?.showPanel()
+                if view == .focus {
+                    self?.hidePanel()
+                } else if view == .complete {
+                    self?.sendFocusCompleteNotification()
+                    if self?.panel?.isVisible == false {
+                        self?.showPanel()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -173,22 +199,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.isVisible ? hidePanel() : showPanel()
     }
 
-    private func showPanel() {
-        guard let panel = panel,
-              let button = statusItem?.button,
-              let buttonWindow = button.window,
-              let screen = NSScreen.main else { return }
+    private func showPanel(overrideCenterX: CGFloat? = nil) {
+        guard let panel = panel, let screen = NSScreen.main else { return }
 
-        let buttonFrame = buttonWindow.convertToScreen(button.frame)
         let panelW: CGFloat = 460
         let panelH: CGFloat = 140
+        let menuBarBottom = screen.frame.maxY - NSStatusBar.system.thickness
 
-        var x = buttonFrame.midX - panelW / 2
+        let centerX: CGFloat
+        if let override = overrideCenterX {
+            centerX = override
+        } else if let button = statusItem?.button, let bw = button.window {
+            centerX = bw.convertToScreen(button.frame).midX
+        } else {
+            centerX = screen.frame.midX
+        }
+
+        var x = centerX - panelW / 2
         x = max(8, min(x, screen.visibleFrame.maxX - panelW - 8))
 
-        // buttonFrame.minY = 메뉴바 버튼 하단 (원래 작동하던 기준값)
-        let finalY = buttonFrame.minY - panelH - 6
-        let startY  = buttonFrame.minY  // 패널 origin이 메뉴바 하단, 패널 본체는 위로 숨겨짐
+        let finalY = menuBarBottom - panelH - 16
+        let startY  = menuBarBottom
 
         panel.setFrameOrigin(NSPoint(x: x, y: startY))
         panel.alphaValue = 0
