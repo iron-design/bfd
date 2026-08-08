@@ -32,6 +32,10 @@ service-account*.json
 # macOS
 .DS_Store
 
+# Xcode
+*.xcuserstate
+xcuserdata/
+
 # 기획 내부 문서 (PRD, 화면 명세서)
 prds/
 
