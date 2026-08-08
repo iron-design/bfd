@@ -273,6 +273,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let centerX: CGFloat
         if let override = overrideCenterX {
             centerX = override
+        } else if screen.safeAreaInsets.top > 0 {
+            // 노치 있는 맥북: 항상 노치 중앙에서 내려오도록
+            centerX = screen.frame.midX
         } else if let button = statusItem?.button, let bw = button.window {
             centerX = bw.convertToScreen(button.frame).midX
         } else {
