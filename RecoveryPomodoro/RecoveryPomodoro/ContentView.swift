@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 // MARK: - Button Style (§1 Response + §4 Springs)
 // press: 즉각 수축 / release: 살짝 튀어오르는 spring
@@ -75,9 +76,14 @@ struct AnimatedBackground: View {
 // MARK: - Main View
 struct ContentView: View {
     @EnvironmentObject var model: TimerModel
+    @State private var contentHeight: CGFloat = 140
 
-    // §3 Interruptibility: id가 바뀔 때마다 이전 뷰 제거 + 새 뷰 삽입 → 언제든 전환 가능
-    private var viewID: String { "\(model.currentView)-\(model.showPicker)-\(model.showBreakPicker)" }
+    private static let defaultH: CGFloat  = 140
+    private static let settingsH: CGFloat = 230
+
+    private var viewID: String {
+        "\(model.currentView)-\(model.showPicker)-\(model.showBreakPicker)-\(model.showGuideBreakPicker)-\(model.showAutoIdlePicker)"
+    }
 
     var body: some View {
         ZStack {
@@ -93,9 +99,12 @@ struct ContentView: View {
                         if model.showBreakPicker { BreakPickerView() } else { GuideView() }
                     case .breakTime:     BreakView()
                     case .breakComplete: BreakCompleteView()
+                    case .settings:
+                        if model.showGuideBreakPicker { SettingsBreakPickerView() }
+                        else if model.showAutoIdlePicker { SettingsAutoIdlePickerView() }
+                        else { SettingsView() }
                     }
                 }
-                // §3 + §4: id 교체로 전환 감지, spring으로 부드럽게
                 .id(viewID)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .center)),
@@ -105,10 +114,44 @@ struct ContentView: View {
             .padding(.horizontal, 38)
             .padding(.vertical, 20)
             .animation(.spring(response: 0.28, dampingFraction: 0.85), value: viewID)
+
+            // 설정 버튼 오버레이 — idle 상태일 때만
+            if model.currentView == .idle && !model.showPicker {
+                Button { model.currentView = .settings } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color.white.opacity(0.28))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(ApplePressStyle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.top, 8)
+                .padding(.trailing, 12)
+            }
         }
-        .frame(width: 460, height: 140)
-        .clipShape(RoundedRectangle(cornerRadius: 25))
+        .frame(width: 460, height: contentHeight)
         .onAppear { model.loadTodayStats() }
+        .onChange(of: model.currentView) { newView in
+            let isSettingsMain = newView == .settings && !model.showGuideBreakPicker && !model.showAutoIdlePicker
+            let target: CGFloat = isSettingsMain ? Self.settingsH : Self.defaultH
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                contentHeight = target
+            }
+        }
+        .onChange(of: model.showGuideBreakPicker) { _ in
+            guard model.currentView == .settings else { return }
+            let isSubPicker = model.showGuideBreakPicker || model.showAutoIdlePicker
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                contentHeight = isSubPicker ? Self.defaultH : Self.settingsH
+            }
+        }
+        .onChange(of: model.showAutoIdlePicker) { _ in
+            guard model.currentView == .settings else { return }
+            let isSubPicker = model.showGuideBreakPicker || model.showAutoIdlePicker
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                contentHeight = isSubPicker ? Self.defaultH : Self.settingsH
+            }
+        }
     }
 }
 
@@ -327,8 +370,13 @@ struct GuideView: View {
     @EnvironmentObject var model: TimerModel
     @State private var autoIdleTask: DispatchWorkItem?
 
+    private var breakProgress: Double {
+        guard model.breakActive else { return 0 }
+        return 1.0 - Double(max(0, model.remaining)) / Double(model.guideBreakSec)
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 5) {
                     Image(systemName: model.currentGuide.systemIcon)
@@ -345,24 +393,11 @@ struct GuideView: View {
                     .lineLimit(2)
                 HStack(spacing: 6) {
                     Button {
+                        guard !model.breakActive else { return }
                         model.guideIndex = (model.guideIndex + 1) % model.guides.count
                         scheduleAutoIdle()
                     } label: {
                         Text("다른 안내")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color.white.opacity(0.50))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
-                    }
-                    .buttonStyle(ApplePressStyle())
-
-                    Button {
-                        autoIdleTask?.cancel()
-                        model.startBreak()
-                    } label: {
-                        Text("시작하기")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.accent)
                             .padding(.horizontal, 10)
@@ -371,11 +406,40 @@ struct GuideView: View {
                             .overlay(Capsule().stroke(Color.accent.opacity(0.35), lineWidth: 0.5))
                     }
                     .buttonStyle(ApplePressStyle())
+                    .opacity(model.breakActive ? 0.4 : 1.0)
                 }
                 .padding(.top, 5)
             }
-            Spacer(minLength: 0)
-            MarimoView(size: 96)
+            Spacer()
+            Button {
+                if model.breakActive {
+                    model.completeBreak()
+                } else {
+                    autoIdleTask?.cancel()
+                    model.startGuideBreak()
+                }
+            } label: {
+                ZStack {
+                    if model.breakActive {
+                        Circle().stroke(Color.accent.opacity(0.18), lineWidth: 3)
+                        Circle()
+                            .trim(from: 0, to: breakProgress)
+                            .stroke(Color.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.linear(duration: 1), value: breakProgress)
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.accent)
+                    } else {
+                        Circle().fill(Color.accent)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.black)
+                    }
+                }
+                .frame(width: 47, height: 47)
+            }
+            .buttonStyle(ApplePressStyle())
         }
         .onAppear { scheduleAutoIdle() }
         .onDisappear { autoIdleTask?.cancel() }
@@ -385,7 +449,7 @@ struct GuideView: View {
         autoIdleTask?.cancel()
         let task = DispatchWorkItem { model.backToIdle() }
         autoIdleTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + 120, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(model.autoIdleSec), execute: task)
     }
 }
 
@@ -458,6 +522,138 @@ struct BreakPickerView: View {
     }
 }
 
+// MARK: - Settings Break Picker (휴식 시간 설정)
+struct SettingsBreakPickerView: View {
+    @EnvironmentObject var model: TimerModel
+    @FocusState private var focused: SBField?
+    @State private var m: Int = 3
+    @State private var s: Int = 0
+
+    enum SBField { case m, s }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button { model.showGuideBreakPicker = false } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "chevron.left").font(.system(size: 10, weight: .semibold))
+                    Text("설정").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(Color.white.opacity(0.75))
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            }.buttonStyle(ApplePressStyle())
+
+            HStack(spacing: 6) {
+                sbCell($m, label: "분", field: .m)
+                Text(":").font(.system(size: 20, weight: .bold)).foregroundColor(.muted).padding(.bottom, 14)
+                sbCell($s, label: "초", field: .s)
+                Button { m = 3; s = 0 } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.white.opacity(0.62))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+                }
+                .buttonStyle(ApplePressStyle()).padding(.bottom, 14)
+                Spacer()
+                ctaButton(label: "적용", icon: nil) {
+                    let total = m * 60 + s
+                    if total > 0 {
+                        model.guideBreakSec = total
+                        UserDefaults.standard.set(total, forKey: "rp_guideBreakSec")
+                    }
+                    model.showGuideBreakPicker = false
+                }.padding(.bottom, 14)
+            }
+        }
+        .onAppear {
+            m = model.guideBreakSec / 60
+            s = model.guideBreakSec % 60
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focused = .m }
+        }
+    }
+
+    private func sbCell(_ value: Binding<Int>, label: String, field: SBField) -> some View {
+        VStack(spacing: 4) {
+            TextField("", value: value, format: .number)
+                .font(.system(size: 26, weight: .bold)).foregroundColor(.ink)
+                .multilineTextAlignment(.center)
+                .frame(width: 54, height: 46).background(Color.black).cornerRadius(10)
+                .textFieldStyle(.plain).focused($focused, equals: field)
+                .onSubmit { focused = field == .m ? .s : nil }
+            Text(label).font(.system(size: 10)).foregroundColor(.muted)
+        }
+    }
+}
+
+// MARK: - Settings Auto-Idle Picker (자동 전환 시간 설정)
+struct SettingsAutoIdlePickerView: View {
+    @EnvironmentObject var model: TimerModel
+    @FocusState private var focused: SAField?
+    @State private var m: Int = 2
+    @State private var s: Int = 0
+
+    enum SAField { case m, s }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button { model.showAutoIdlePicker = false } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "chevron.left").font(.system(size: 10, weight: .semibold))
+                    Text("설정").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(Color.white.opacity(0.75))
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            }.buttonStyle(ApplePressStyle())
+
+            HStack(spacing: 6) {
+                saCell($m, label: "분", field: .m)
+                Text(":").font(.system(size: 20, weight: .bold)).foregroundColor(.muted).padding(.bottom, 14)
+                saCell($s, label: "초", field: .s)
+                Button { m = 2; s = 0 } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.white.opacity(0.62))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+                }
+                .buttonStyle(ApplePressStyle()).padding(.bottom, 14)
+                Spacer()
+                ctaButton(label: "적용", icon: nil) {
+                    let total = m * 60 + s
+                    if total > 0 {
+                        model.autoIdleSec = total
+                        UserDefaults.standard.set(total, forKey: "rp_autoIdleSec")
+                    }
+                    model.showAutoIdlePicker = false
+                }.padding(.bottom, 14)
+            }
+        }
+        .onAppear {
+            m = model.autoIdleSec / 60
+            s = model.autoIdleSec % 60
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { focused = .m }
+        }
+    }
+
+    private func saCell(_ value: Binding<Int>, label: String, field: SAField) -> some View {
+        VStack(spacing: 4) {
+            TextField("", value: value, format: .number)
+                .font(.system(size: 26, weight: .bold)).foregroundColor(.ink)
+                .multilineTextAlignment(.center)
+                .frame(width: 54, height: 46).background(Color.black).cornerRadius(10)
+                .textFieldStyle(.plain).focused($focused, equals: field)
+                .onSubmit { focused = field == .m ? .s : nil }
+            Text(label).font(.system(size: 10)).foregroundColor(.muted)
+        }
+    }
+}
+
 // MARK: - Break View
 struct BreakView: View {
     @EnvironmentObject var model: TimerModel
@@ -510,7 +706,9 @@ struct BreakCompleteView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            MarimoView(size: 80)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 36))
+                .foregroundColor(.accent)
                 .scaleEffect(appeared ? 1.0 : 0.5)
                 .opacity(appeared ? 1.0 : 0.0)
             Text("휴식 종료")
@@ -525,6 +723,102 @@ struct BreakCompleteView: View {
                 appeared = true
             }
         }
+    }
+}
+
+// MARK: - Settings View
+struct SettingsView: View {
+    @EnvironmentObject var model: TimerModel
+    @State private var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 상단: 뒤로 + 앱 종료
+            HStack {
+                Button { model.currentView = .idle } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left").font(.system(size: 10, weight: .semibold))
+                        Text("이전").font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(Color.white.opacity(0.75))
+                    .padding(.horizontal, 12).padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                }.buttonStyle(ApplePressStyle())
+                Spacer()
+                Button { NSApp.terminate(nil) } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "power").font(.system(size: 11))
+                        Text("앱 종료").font(.system(size: 12, weight: .medium))
+                    }.foregroundColor(Color.white.opacity(0.60))
+                }.buttonStyle(ApplePressStyle())
+            }
+            .padding(.bottom, 12)
+
+            // 소리
+            settingRow(label: "소리") {
+                Toggle("", isOn: $model.soundEnabled)
+                    .toggleStyle(.switch).scaleEffect(0.75, anchor: .trailing).labelsHidden()
+            }
+            rowDivider
+            // 시작시 자동 실행
+            settingRow(label: "시작시 자동 실행") {
+                Toggle("", isOn: $launchAtLogin)
+                    .toggleStyle(.switch).scaleEffect(0.75, anchor: .trailing).labelsHidden()
+                    .onChange(of: launchAtLogin) { newValue in
+                        do {
+                            if newValue { try SMAppService.mainApp.register() }
+                            else        { try SMAppService.mainApp.unregister() }
+                        } catch { launchAtLogin = !newValue }
+                    }
+            }
+            rowDivider
+            // 휴식 시간
+            Button { model.showGuideBreakPicker = true } label: {
+                settingRow(label: "휴식 시간") {
+                    HStack(spacing: 4) {
+                        Text(formatMinSec(model.guideBreakSec))
+                            .font(.system(size: 12)).foregroundColor(.muted)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold)).foregroundColor(.muted)
+                    }
+                }
+            }.buttonStyle(ApplePressStyle())
+            rowDivider
+            // 자동 전환 (집중 완료 후 n초 뒤 아이들로)
+            Button { model.showAutoIdlePicker = true } label: {
+                settingRow(label: "자동 전환") {
+                    HStack(spacing: 4) {
+                        Text(formatMinSec(model.autoIdleSec))
+                            .font(.system(size: 12)).foregroundColor(.muted)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold)).foregroundColor(.muted)
+                    }
+                }
+            }.buttonStyle(ApplePressStyle())
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var rowDivider: some View {
+        Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5).padding(.vertical, 8)
+    }
+
+    private func formatMinSec(_ sec: Int) -> String {
+        let m = sec / 60, s = sec % 60
+        return s == 0 ? "\(m)분" : "\(m)분 \(s)초"
+    }
+
+    @ViewBuilder
+    private func settingRow<C: View>(label: String, @ViewBuilder control: () -> C) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: .medium)).foregroundColor(.ink)
+            Spacer()
+            control()
+        }
+        .frame(height: 24)
+        .padding(.horizontal, 16)
     }
 }
 

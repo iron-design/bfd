@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 enum AppView: Equatable {
-    case idle, focus, complete, guide, breakTime, breakComplete
+    case idle, focus, complete, guide, breakTime, breakComplete, settings
 }
 
 struct Guide {
@@ -35,6 +35,15 @@ class TimerModel: ObservableObject {
     @Published var breakPickerS: Int = 0
     @Published var breakOverrideSec: Int? = nil
     @Published var soundEnabled: Bool = true
+    @Published var breakActive: Bool = false
+    @Published var guideBreakSec: Int = {
+        let v = UserDefaults.standard.integer(forKey: "rp_guideBreakSec"); return v > 0 ? v : 180
+    }()
+    @Published var autoIdleSec: Int = {
+        let v = UserDefaults.standard.integer(forKey: "rp_autoIdleSec"); return v > 0 ? v : 120
+    }()
+    @Published var showGuideBreakPicker: Bool = false
+    @Published var showAutoIdlePicker: Bool = false
 
     private var timerCancellable: AnyCancellable?
 
@@ -116,8 +125,28 @@ class TimerModel: ObservableObject {
         }
     }
 
+    func startGuideBreak() {
+        breakActive = true
+        startTick(initSec: guideBreakSec) {
+            self.completeBreak()
+        }
+    }
+
+    func completeBreak() {
+        stopTimer()
+        breakActive = false
+        if soundEnabled { SoundManager.play(.checkin) }
+        cycles += 1
+        saveSession()
+        currentView = .breakComplete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            if self.currentView == .breakComplete { self.backToIdle() }
+        }
+    }
+
     func backToIdle() {
         stopTimer()
+        breakActive = false
         paused = false
         currentView = .idle
     }
