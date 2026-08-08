@@ -1,0 +1,18 @@
+{
+  "images" : [
+    {
+      "filename" : "pomodoro_16.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "pomodoro_32.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
