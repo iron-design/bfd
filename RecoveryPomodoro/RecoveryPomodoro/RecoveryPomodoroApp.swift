@@ -159,7 +159,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static let defaultPanelH: CGFloat  = 140
-    private static let settingsPanelH: CGFloat = 230
+    private static let settingsPanelH: CGFloat = 265
 
     private func panelHeight(for view: AppView) -> CGFloat {
         if view == .settings && !model.showGuideBreakPicker && !model.showAutoIdlePicker {
