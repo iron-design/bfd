@@ -186,6 +186,17 @@ class TimerModel: ObservableObject {
     }
 
     func loadTodayStats() {
+        // 바이너리 수정일 기반 빌드 ID — 새 빌드 설치 시 세션 자동 초기화
+        if let execURL = Bundle.main.executableURL,
+           let attrs = try? FileManager.default.attributesOfItem(atPath: execURL.path),
+           let modDate = attrs[.modificationDate] as? Date {
+            let buildID = String(Int(modDate.timeIntervalSince1970))
+            if UserDefaults.standard.string(forKey: "rp_build_id") != buildID {
+                UserDefaults.standard.removeObject(forKey: "rp_sessions")
+                UserDefaults.standard.set(buildID, forKey: "rp_build_id")
+            }
+        }
+
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         fmt.timeZone = TimeZone(identifier: "Asia/Seoul")
