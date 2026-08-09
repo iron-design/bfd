@@ -245,7 +245,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .applicationName: "Recovery Pomodoro",
             .applicationVersion: "1.0.0",
             .credits: NSAttributedString(
-                string: "회복형 집중 타이머\nMade by Hyuncheol Choi\nBF.D 4기",
+                string: "휴식 관리 뽀모도로\nMade by iron\ndesignormal@naver.com",
                 attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]
             ),
             .version: "",
