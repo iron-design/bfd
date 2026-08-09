@@ -97,7 +97,7 @@ struct ContentView: View {
     @State private var contentHeight: CGFloat = 140
 
     private static let defaultH: CGFloat  = 140
-    private static let settingsH: CGFloat = 230
+    private static let settingsH: CGFloat = 265
 
     private var viewID: String {
         "\(model.currentView)-\(model.showPicker)-\(model.showBreakPicker)-\(model.showGuideBreakPicker)-\(model.showAutoIdlePicker)"
@@ -812,6 +812,16 @@ struct SettingsView: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 9, weight: .semibold)).foregroundColor(.muted)
                     }
+                }
+            }.buttonStyle(ApplePressStyle())
+            rowDivider
+            // 기록 초기화
+            Button {
+                UserDefaults.standard.removeObject(forKey: "rp_sessions")
+                model.cycles = 0
+            } label: {
+                settingRow(label: "오늘 기록 초기화") {
+                    Image(systemName: "trash").font(.system(size: 11)).foregroundColor(.appRed)
                 }
             }.buttonStyle(ApplePressStyle())
         }
