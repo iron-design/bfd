@@ -227,6 +227,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let event = NSApp.currentEvent else { return }
         if event.type == .rightMouseDown {
             let menu = NSMenu()
+            menu.addItem(NSMenuItem(title: "Recovery Pomodoro 정보...", action: #selector(showAboutPanel), keyEquivalent: ""))
+            menu.addItem(.separator())
             menu.addItem(NSMenuItem(title: "Recovery Pomodoro 종료", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
             // statusItem.menu에 세팅 후 performClick하면 macOS가 메뉴바 바로 아래에 정확히 위치시킴
             statusItem?.menu = menu
@@ -236,6 +238,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let panel = panel else { return }
             panel.isVisible ? hidePanel() : showPanel()
         }
+    }
+
+    @objc private func showAboutPanel() {
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: "Recovery Pomodoro",
+            .applicationVersion: "1.0.0",
+            .credits: NSAttributedString(
+                string: "회복형 집중 타이머\nMade by Hyuncheol Choi\nBF.D 4기",
+                attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]
+            ),
+            .version: "",
+        ])
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func animatePanelResize(for view: AppView) {
