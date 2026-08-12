@@ -224,8 +224,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func handleStatusClick() {
-        guard let event = NSApp.currentEvent else { return }
-        if event.type == .rightMouseDown {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseDown {
             let menu = NSMenu()
             menu.addItem(NSMenuItem(title: "Recovery Pomodoro 정보...", action: #selector(showAboutPanel), keyEquivalent: ""))
             menu.addItem(.separator())
